@@ -1,1 +1,11 @@
+<group name="local,windows,powershell,">
 
+  <rule id="100100" level="12">
+    <if_sid>92029</if_sid>
+    <description>Custom SOC Detection: PowerShell ExecutionPolicy Bypass</description>
+    <mitre>
+      <id>T1059.001</id>
+    </mitre>
+  </rule>
+
+</group>
