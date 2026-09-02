@@ -39,3 +39,17 @@ Incident Response
 Active Response
        ↓
 SOC Dashboard
+---
+
+## 🏗️ Lab Architecture
+
+The SOC lab consists of three virtual machines running in an isolated VMware environment:
+
+| Component | Role |
+|---|---|
+| **Wazuh Server** | Central security monitoring, analysis and visualization |
+| **Windows 11 Endpoint** | Monitored endpoint generating Windows Security and Sysmon telemetry |
+| **Kali Linux** | Controlled security testing |
+| **VMware** | Isolated virtualization environment |
+
+![SOC Lab Architecture](architecture/architecture-diagram.png)
