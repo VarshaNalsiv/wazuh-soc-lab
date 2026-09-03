@@ -379,6 +379,9 @@ The following screenshots document the major stages of the project:
 | [Custom Detection](screenshots/10-custom-rule.png) | Custom Wazuh Rule 100100 |
 | [Active Response](screenshots/11-active-response.png) | Active Response execution verification |
 | [Final SOC Dashboard](screenshots/12-final-dashboard.png) | Completed SOC dashboard |
+| [Atomic PowerShell Detection](screenshots/13-atomic-powershell-wazuh.png) | Atomic Red Team T1059.001 PowerShell validation |
+| [Atomic Registry Detection](screenshots/14-atomic-registry-wazuh.png) | Atomic Red Team T1112 registry validation |
+| [Atomic ADS Detection](screenshots/15-atomic-ads-wazuh.png) | Atomic Red Team T1059.001 ADS validation |
 
 ---
 
