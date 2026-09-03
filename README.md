@@ -111,6 +111,59 @@ The project demonstrated detection of:
 | **100100** | Custom SOC Detection: PowerShell ExecutionPolicy Bypass |
 
 ---
+## Atomic Red Team Validation
+
+Atomic Red Team was used to validate the Wazuh detection pipeline with controlled and reversible security tests on the Windows endpoint.
+
+Three Atomic Red Team tests were executed:
+
+| Atomic Test | Technique | Result | Wazuh Evidence |
+|---|---|---|---|
+| T1059.001-10 | PowerShell | Successful | Rules 92041, 92027 |
+| T1112-1 | Modify Registry | Successful | Rules 92052, 92041, 92027 |
+| T1059.001-11 | NTFS Alternate Data Stream Access | Successful | Rule 92027 |
+
+### Test 1 — PowerShell Fileless Script Execution
+
+The test generated PowerShell and registry activity and successfully created a temporary marker file.
+
+Wazuh detected the resulting activity through:
+
+- **92041** — Value added to registry key has Base64-like pattern
+- **92027** — Powershell process spawned powershell instance
+
+![Atomic PowerShell Wazuh Detection](screenshots/13-atomic-powershell-wazuh.png)
+
+### Test 2 — Modify Registry
+
+The test performed a controlled modification to the current user's registry profile.
+
+Wazuh recorded related activity through:
+
+- **92052** — Windows command prompt started by an abnormal process
+- **92041** — Value added to registry key has Base64-like pattern
+- **92027** — Powershell process spawned powershell instance
+
+![Atomic Registry Wazuh Detection](screenshots/14-atomic-registry-wazuh.png)
+
+### Test 3 — NTFS Alternate Data Stream Access
+
+The test created and executed a harmless NTFS Alternate Data Stream.
+
+The Atomic test completed successfully, but a direct Sysmon Event ID 15 match was not observed in Wazuh. Wazuh did record associated PowerShell process activity through Rule 92027.
+
+![Atomic ADS Wazuh Detection](screenshots/15-atomic-ads-wazuh.png)
+
+### Validation Result
+
+The Atomic Red Team tests demonstrated that controlled adversary-simulation activity generated endpoint telemetry that was subsequently collected and analyzed by Wazuh.
+
+The results also identified a detection-coverage gap for direct NTFS Alternate Data Stream telemetry, providing a potential area for future detection engineering.
+
+[Detailed Atomic Red Team Validation](documentation/atomic-red-team-validation.md)
+
+---
+
 
 ## SOC Investigation
 
