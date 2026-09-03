@@ -368,6 +368,7 @@ The following screenshots document the major stages of the project:
 
 | Evidence | Description |
 |---|---|
+| [Lab Architecture](screenshots/01-lab-architecture.png) | Isolated VMware SOC lab architecture |
 | [Wazuh Agent](screenshots/02-wazuh-agent.png) | Wazuh Agent service verification |
 | [Sysmon Process Create](screenshots/03-sysmon-process-create.png) | Sysmon Event ID 1 process creation telemetry |
 | [Sysmon File Create](screenshots/04-sysmon-file-create.png) | Sysmon Event ID 11 file creation telemetry |
@@ -441,6 +442,7 @@ The project successfully demonstrated an end-to-end SOC workflow:
 - ✅ Incident response
 - ✅ Wazuh Active Response
 - ✅ SOC dashboard creation
+- ✅ Atomic Red Team detection validation
 
 The lab provided practical experience across **security monitoring, detection, investigation, threat hunting, detection engineering, incident response, and automated response execution**.
 
@@ -494,6 +496,10 @@ Potential future enhancements include:
 ### Custom Detection Rule
 
 [Wazuh Custom Rule](detection-rules/local_rules.xml)
+
+### Atomic Red Team Validation
+
+[Atomic Red Team Validation](documentation/atomic-red-team-validation.md)
 
 ---
 
