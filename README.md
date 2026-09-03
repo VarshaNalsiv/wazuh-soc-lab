@@ -1,6 +1,6 @@
 # Security Operations Center (SOC) Lab Using Wazuh, Sysmon & MITRE ATT&CK
 
-An isolated VMware SOC lab demonstrating **security monitoring, detection, alert investigation, event correlation, MITRE ATT&CK mapping, custom detection engineering, incident response, automated response execution, and SOC dashboard visualization.**
+An isolated VMware SOC lab demonstrating **security monitoring, detection, alert investigation, event review, MITRE ATT&CK mapping, custom detection engineering, incident response, automated response execution, and SOC dashboard visualization.**
 
 ![SOC Lab Architecture](architecture/architecture-diagram.png)
 
@@ -28,7 +28,7 @@ Wazuh Detection
        ↓
 Alert Investigation
        ↓
-Event Correlation
+Event Review & Correlation
        ↓
 MITRE ATT&CK Mapping
        ↓
@@ -92,11 +92,10 @@ Controlled suspicious activity was generated against the Windows endpoint to val
 The project demonstrated detection of:
 
 - PowerShell execution
-- PowerShell `ExecutionPolicy Bypass` (observed, not specifically detected by custom rule)
 - Suspicious file creation
 - Executable file activity
 - Windows account creation
-- Administrator group modification
+- Security-enabled local group membership change
 - Failed authentication
 - Process creation
 - File creation
@@ -105,7 +104,7 @@ The project demonstrated detection of:
 
 | Rule ID | Detection |
 |---------|-----------|
-| **92029** | PowerShell executed from a suspicious location |
+| **92028** | PowerShell execution detected |
 | **92207** | Executable file dropped in Users\Public folder |
 | **92213** | Executable file dropped in a folder commonly used by malware |
 | **100100** | Custom SOC Detection: PowerShell execution activity |
@@ -118,11 +117,11 @@ Atomic Red Team was used to validate the Wazuh detection pipeline with controlle
 
 Three Atomic Red Team tests were executed:
 
-| Atomic Test | Technique | Result | Wazuh Evidence |
-|-------------|-----------|--------|----------------|
+| Atomic Test | Technique | Execution Result | Wazuh Evidence |
+|-------------|-----------|------------------|----------------|
 | T1059.001-10 | PowerShell | Successful | Rules 92041, 92027 |
 | T1112-1 | Modify Registry | Successful | Rules 92052, 92041, 92027 |
-| T1059.001-11 | NTFS Alternate Data Stream Access | Successful | Rule 92027 |
+| T1059.001-11 | NTFS Alternate Data Stream Access | Successful (test execution) | Rule 92027 only; direct Event 15 not observed |
 
 ### Test 1 — PowerShell Fileless Script Execution
 
@@ -151,7 +150,7 @@ Wazuh recorded related activity through:
 
 The test created and executed a harmless NTFS Alternate Data Stream.
 
-The Atomic test completed successfully, but a direct Sysmon Event ID 15 match was not observed in Wazuh. Wazuh did record associated PowerShell process activity through Rule 92027.
+The Atomic test executed successfully. However, a direct Sysmon Event ID 15 match was not observed in Wazuh. Wazuh did record associated PowerShell process activity through Rule 92027.
 
 ![Atomic ADS Wazuh Detection](screenshots/15-atomic-ads-wazuh.png)
 
@@ -171,60 +170,40 @@ The detected activity was investigated using Wazuh alerts, Windows Security logs
 
 ### Investigation Case: Suspicious PowerShell Execution
 
-| Attribute | Detail |
-|-----------|--------|
-| **Alert Triggered** | August 30, 2026 at 14:23:12 |
-| **Endpoint** | WIN11-SOC |
-| **Rule** | 92029 — PowerShell from suspicious location |
-| **MITRE Mapping** | T1059.001 — Command and Scripting Interpreter: PowerShell |
+**Alert Triggered:** During controlled testing  
+**Endpoint:** WIN11-SOC  
+**Rule:** 92028 — PowerShell execution detected  
+**MITRE Mapping:** T1059.001 — Command and Scripting Interpreter: PowerShell
 
 **Investigation Steps:**
 
-1. Opened the alert in Wazuh Dashboard and reviewed the raw JSON:
-
-```json
-"win.eventdata.commandLine": "powershell -c Write-Host 'SOC Lab Test'"
-```
-
-2. Confirmed the process was `powershell.exe` (PID 1234), spawned by `cmd.exe`.
-
+1. Opened the alert in Wazuh Dashboard and reviewed the raw JSON.
+2. Confirmed the process was `powershell.exe`, spawned by `cmd.exe`.
 3. Searched for other PowerShell activity on the same endpoint:
 
 ```
 data.win.eventdata.commandLine: "*PowerShell*" AND agent.name: "WIN11-SOC"
 ```
 
-4. Identified 47 events, 3 with similar patterns.
-
-5. Determined the activity was generated from Kali Linux as part of controlled testing.
+4. Determined the activity was generated from Kali Linux as part of controlled testing.
 
 **Conclusion:** The Wazuh detection pipeline successfully captured and alerted on PowerShell execution. The activity was validated as a controlled test.
 
 ---
 
-## Event Correlation
+## Event Review & Correlation
 
-Multiple related security events were correlated into a single incident timeline rather than being treated as isolated alerts.
+Multiple related security events were reviewed together during controlled testing rather than being treated as isolated alerts.
 
-The observed activity included:
+The reviewed activity included:
 
-```text
-Account Creation (4720)
-        ↓
-Administrator Group Modification (4732)
-        ↓
-Failed Authentication (4625)
-        ↓
-PowerShell Activity
-        ↓
-File Activity
-        ↓
-Wazuh Detection
-        ↓
-Investigation
-```
+- Account Creation (Event 4720)
+- Security-enabled Local Group Membership Change (Event 4732)
+- Failed Authentication (Event 4625)
+- PowerShell Activity
+- File Activity
 
-This demonstrated how multiple endpoint events can provide greater context when investigated together.
+These events were generated during controlled testing and reviewed as a potential sequence. This exercise demonstrated how multiple endpoint events can provide greater context when investigated together.
 
 ---
 
@@ -258,19 +237,20 @@ A custom Wazuh detection rule was developed to generate higher-severity alerts f
 |----------|-------|
 | **Rule ID** | `100100` |
 | **Severity** | `12` |
-| **Parent Rule** | `92029` |
-| **Detection** | PowerShell execution activity |
+| **Parent Rule** | `92028` |
+| **Detection** | PowerShell ExecutionPolicy Bypass |
 | **MITRE ATT&CK** | `T1059.001` |
 
-The custom rule was successfully tested and generated Wazuh alerts during controlled PowerShell execution.
+The custom rule was created and tested. It was designed to detect PowerShell activity involving `ExecutionPolicy Bypass` by checking the command line. During validation, the expected alert did not fire, identifying a gap for future detection engineering refinement.
 
 ### Rule Configuration
 
 ```xml
 <group name="local,windows,powershell,">
   <rule id="100100" level="12">
-    <if_sid>92029</if_sid>
-    <description>Custom SOC Detection: PowerShell execution activity</description>
+    <if_sid>92028</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i).*ExecutionPolicy.*Bypass.*</field>
+    <description>Custom SOC Detection: PowerShell ExecutionPolicy Bypass</description>
     <mitre>
       <id>T1059.001</id>
     </mitre>
@@ -291,16 +271,16 @@ Observed activities were mapped to relevant MITRE ATT&CK techniques based on the
 | Activity | Technique | ID |
 |----------|-----------|-----|
 | PowerShell execution | Command and Scripting Interpreter: PowerShell | **T1059.001** |
-| Suspicious executable/file activity | Ingress Tool Transfer | **T1105** |
+| Suspicious file creation | File Creation (telemetry observation) | N/A |
 | Windows account creation | Create Account: Local Account | **T1136.001** |
-| Administrator group modification | Account Manipulation | **T1098** |
-| Failed authentication | Brute Force | **T1110** |
+| Security-enabled local group membership change | Account Manipulation | **T1098** |
+| Failed authentication | Unsuccessful Logon (telemetry observation) | N/A |
 
 ### Key Technique — T1059.001
 
 **Command and Scripting Interpreter: PowerShell**
 
-PowerShell activity was detected through endpoint telemetry and Wazuh detection rules. The custom rule `100100` generated higher-severity alerts for PowerShell execution.
+PowerShell activity was detected through endpoint telemetry and Wazuh detection rules. The custom rule `100100` was created to specifically detect PowerShell `ExecutionPolicy Bypass` activity.
 
 [View MITRE ATT&CK mapping](mitre/mitre-mapping.md)
 
@@ -333,37 +313,15 @@ The response process demonstrated basic SOC containment and recovery activities 
 
 ## Active Response
 
-A custom Wazuh Active Response was configured for the custom detection rule `100100`.
+A custom Wazuh Active Response mechanism was configured and separately validated.
 
-### Response Workflow
-
-```text
-Wazuh Alert
-     ↓
-Custom Rule 100100
-     ↓
-Active Response
-     ↓
-SOC_ActiveResponse.cmd
-     ↓
-SOC_ActiveResponse.ps1
-     ↓
-Response Execution
-     ↓
-Verification
-```
-
-The Windows endpoint executed the custom response script when the custom detection rule was triggered.
-
-The response was verified by creating:
+The response was verified by manually executing the script, which created:
 
 ```
 C:\Users\Public\SOC_ActiveResponse_Result.txt
 ```
 
-The result file confirmed successful execution of the Active Response.
-
-The implementation was intentionally **non-destructive** and designed for safe validation within the isolated SOC lab.
+The result file confirmed that the Active Response script executed successfully. This validation demonstrated that the automated response mechanism works, though it was not triggered by rule `100100` during testing.
 
 ---
 
@@ -457,20 +415,20 @@ wazuh-soc-lab/
 
 ## Project Results
 
-The project successfully demonstrated an end-to-end SOC workflow:
+The project successfully demonstrated aspects of an end-to-end SOC workflow:
 
 - ✅ Wazuh Server deployment
 - ✅ Windows Wazuh Agent integration
 - ✅ Sysmon endpoint telemetry
 - ✅ Windows Security event monitoring
-- ✅ Suspicious PowerShell detection
+- ✅ PowerShell detection via existing Wazuh rules
 - ✅ Suspicious file activity detection
 - ✅ Account activity investigation
-- ✅ Event correlation
+- ✅ Event review & correlation
 - ✅ MITRE ATT&CK mapping
-- ✅ Custom Wazuh detection engineering
+- ✅ Custom Wazuh detection engineering (rule created and tested; alert did not fire during validation)
 - ✅ Incident response
-- ✅ Wazuh Active Response
+- ✅ Wazuh Active Response (separately validated)
 - ✅ SOC dashboard creation
 - ✅ Atomic Red Team detection validation
 
@@ -482,9 +440,9 @@ The lab provided practical experience across **security monitoring, detection, i
 
 | Area | Lesson |
 |------|--------|
-| Detection Engineering | A custom rule is only as effective as its specific logic. Rule `100100` inherited from `92029`, making it a broad PowerShell detection rather than a precise `ExecutionPolicy Bypass` detection. |
+| Detection Engineering | A custom rule is only as effective as its specific logic. Rule `100100` was designed to detect `ExecutionPolicy Bypass` using a field condition. During validation, the expected alert did not fire, identifying a need for further refinement. |
 | Validation | Atomic Red Team is useful for identifying detection gaps, such as the NTFS ADS coverage gap. |
-| Investigation | Correlating multiple events (account creation + group modification + PowerShell) provides more context than isolated alerts. |
+| Investigation | Reviewing multiple events (account creation + group modification + PowerShell) provides more context than isolated alerts. |
 | Visibility | Sysmon provides significantly more telemetry than Windows Security logs alone. |
 
 ---
@@ -510,7 +468,7 @@ Potential future enhancements include:
 
 - Integrating **Zeek** or **Suricata** for network monitoring
 - Adding additional Windows and Linux endpoints
-- Expanding custom Wazuh detection rules
+- Expanding custom Wazuh detection rules with specific logic
 - Integrating threat intelligence feeds
 - Building more advanced event correlation
 - Expanding automated response capabilities
