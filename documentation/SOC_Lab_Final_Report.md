@@ -190,13 +190,23 @@ PowerShell activity was detected through endpoint telemetry and Wazuh detection 
 A custom Wazuh rule (`100100`) was created to detect PowerShell execution activity.
 
 ```xml
-<rule id="100100" level="12">
-  <if_sid>92029</if_sid>
-  <description>Custom SOC Detection: PowerShell execution activity</description>
-  <mitre>
-    <id>T1059.001</id>
-  </mitre>
-</rule>
+<!--
+  Wazuh Local Rules for SOC Lab
+  Purpose: Custom detection rule for PowerShell activity.
+  Status: Inherits from parent rule 92029.
+  Note: This rule is currently a broad PowerShell detection.
+  Future improvement: Add specific logic for "ExecutionPolicy Bypass".
+-->
+
+<group name="local,windows,powershell,">
+  <rule id="100100" level="12">
+    <if_sid>92029</if_sid>
+    <description>Custom SOC Detection: PowerShell execution activity</description>
+    <mitre>
+      <id>T1059.001</id>
+    </mitre>
+  </rule>
+</group>
 ```
 
 The rule successfully generated alerts during controlled PowerShell testing.
