@@ -1,11 +1,17 @@
-<group name="local,windows,powershell,">
+<!--
+  Wazuh Local Rules for SOC Lab
+  Purpose: Custom detection rule for PowerShell activity.
+  Status: Inherits from parent rule 92029.
+  Note: This rule is currently a broad PowerShell detection.
+  Future improvement: Add specific logic for "ExecutionPolicy Bypass".
+-->
 
+<group name="local,windows,powershell,">
   <rule id="100100" level="12">
     <if_sid>92029</if_sid>
-    <description>Custom SOC Detection: PowerShell ExecutionPolicy Bypass</description>
+    <description>Custom SOC Detection: PowerShell execution activity</description>
     <mitre>
       <id>T1059.001</id>
     </mitre>
   </rule>
-
 </group>
