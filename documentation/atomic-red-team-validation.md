@@ -2,15 +2,14 @@
 
 ## Overview
 
-Atomic Red Team was used to validate the detection capability of the Wazuh SOC lab using controlled, reversible security tests on the Windows endpoint.
+Atomic Red Team was used to validate the detection pipeline of the Wazuh SOC lab using controlled, reversible security tests on the Windows endpoint.
 
 The tests were executed on the isolated Windows 11 SOC endpoint with:
 
 - Wazuh Agent
 - Sysmon
 - Wazuh Manager and Dashboard
-- Windows Defender
-- Atomic Red Team
+- Windows Defender (active)
 
 No credential dumping, persistence, security-control disabling, or destructive activity was used.
 
@@ -18,9 +17,11 @@ No credential dumping, persistence, security-control disabling, or destructive a
 
 ## Test 1 — PowerShell Fileless Script Execution
 
-**MITRE ATT&CK Technique:** T1059.001 — PowerShell  
-**Atomic Test:** T1059.001-10  
-**Test Name:** PowerShell Fileless Script Execution
+| Field | Value |
+|-------|-------|
+| **MITRE Technique** | T1059.001 — PowerShell |
+| **Atomic Test** | T1059.001-10 |
+| **Test Name** | PowerShell Fileless Script Execution |
 
 ### Objective
 
@@ -28,26 +29,34 @@ Validate whether PowerShell activity involving registry-stored encoded content g
 
 ### Execution Result
 
-The Atomic test completed successfully with:
+The Atomic test completed successfully:
 
-- Exit code: `0`
-- Marker file created successfully
-- Registry value created successfully
+| Check | Result |
+|-------|--------|
+| Exit code | 0 |
+| Marker file | Created successfully |
+| Registry value | Created successfully |
 
-The test created:
+**Marker File Created:**
 
-`C:\Windows\Temp\art-marker.txt`
+```
+C:\Windows\Temp\art-marker.txt
+```
 
-The marker contained:
+**Marker Content:**
 
-`Hello from the Atomic Red Team`
+```
+Hello from the Atomic Red Team
+```
 
 ### Wazuh Detection
 
 The activity generated Wazuh events including:
 
-- **Rule 92041 — Value added to registry key has Base64-like pattern**
-- **Rule 92027 — Powershell process spawned powershell instance**
+| Rule ID | Description |
+|---------|-------------|
+| 92041 | Value added to registry key has Base64-like pattern |
+| 92027 | Powershell process spawned powershell instance |
 
 ### Cleanup
 
@@ -60,9 +69,11 @@ Atomic Red Team cleanup successfully removed:
 
 ## Test 2 — Modify Registry
 
-**MITRE ATT&CK Technique:** T1112 — Modify Registry  
-**Atomic Test:** T1112-1  
-**Test Name:** Modify Registry of Current User Profile - cmd
+| Field | Value |
+|-------|-------|
+| **MITRE Technique** | T1112 — Modify Registry |
+| **Atomic Test** | T1112-1 |
+| **Test Name** | Modify Registry of Current User Profile - cmd |
 
 ### Objective
 
@@ -70,24 +81,31 @@ Validate Wazuh visibility into controlled registry modification activity.
 
 ### Execution Result
 
-Prerequisites were met and the Atomic test completed successfully with:
+| Check | Result |
+|-------|--------|
+| Prerequisites | Met |
+| Exit code | 0 |
+| Registry modification | Successfully performed |
 
-- Exit code: `0`
-- Registry modification successfully performed
+**Registry Key Modified:**
 
-The test modified:
+```
+HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced
+```
 
-`HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced`
-
-using the `HideFileExt` value.
+The test modified the `HideFileExt` value.
 
 ### Wazuh Detection
 
 Wazuh showed activity during the test window including:
 
-- **Rule 92052 — Windows command prompt started by an abnormal process**
-- **Rule 92041 — Value added to registry key has Base64-like pattern**
-- **Rule 92027 — Powershell process spawned powershell instance**
+| Rule ID | Description |
+|---------|-------------|
+| 92052 | Windows command prompt started by an abnormal process |
+| 92041 | Value added to registry key has Base64-like pattern |
+| 92027 | Powershell process spawned powershell instance |
+
+**Note on Correlation:**
 
 The events were used as telemetry evidence for the controlled registry activity. Exact rule causality was not assumed where the event details did not conclusively establish it.
 
@@ -99,60 +117,70 @@ Atomic Red Team cleanup was successfully completed.
 
 ## Test 3 — NTFS Alternate Data Stream Access
 
-**MITRE ATT&CK Technique:** T1059.001 — PowerShell  
-**Atomic Test:** T1059.001-11  
-**Test Name:** NTFS Alternate Data Stream Access
+| Field | Value |
+|-------|-------|
+| **MITRE Technique** | T1059.001 — PowerShell |
+| **Atomic Test** | T1059.001-11 |
+| **Test Name** | NTFS Alternate Data Stream Access |
 
 ### Objective
 
 Validate visibility into PowerShell activity associated with NTFS Alternate Data Streams.
 
+### Prerequisites Check
+
+| Check | Status |
+|-------|--------|
+| System drive filesystem: NTFS | ✅ Met |
+| Wazuh Agent: Running | ✅ Met |
+| Sysmon: Running | ✅ Met |
+
 ### Execution Result
 
-Prerequisites were met:
-
-- System drive filesystem: NTFS
-- Wazuh Agent: Running
-- Sysmon: Running
-
-The Atomic test completed successfully with:
-
-- `Stream Data Executed`
-- Exit code: `0`
+| Check | Result |
+|-------|--------|
+| Stream Data Executed | ✅ Successful |
+| Exit code | 0 |
 
 ### Wazuh Detection
 
-A direct search for Sysmon Event ID 15 did not return a matching Wazuh event.
+| Finding | Result |
+|---------|--------|
+| Sysmon Event ID 15 (direct match) | ❌ Not observed in Wazuh |
+| PowerShell process activity (Rule 92027) | ✅ Detected |
 
-However, Wazuh did record PowerShell process activity:
+**Key Finding:**
 
-- **Rule 92027 — Powershell process spawned powershell instance**
-
-Therefore, this test demonstrated PowerShell/process telemetry visibility, but the lab configuration did not demonstrate direct Wazuh detection of the ADS itself.
+The test demonstrated PowerShell/process telemetry visibility, but the current lab configuration did not produce a direct Wazuh alert for the ADS activity itself. This identifies a potential area for future detection engineering.
 
 ### Cleanup
 
-Atomic Red Team cleanup was successfully completed and the temporary ADS test file was removed.
+Atomic Red Team cleanup was successfully completed. The temporary ADS test file was removed.
 
 ---
 
 ## Detection Validation Summary
 
 | Atomic Test | Technique | Execution | Wazuh Evidence |
-|---|---|---:|---|
-| T1059.001-10 | PowerShell | Successful | 92041, 92027 |
-| T1112-1 | Modify Registry | Successful | 92052, 92041, 92027 |
-| T1059.001-11 | NTFS ADS | Successful | 92027 |
- 
+|-------------|-----------|-----------|----------------|
+| T1059.001-10 | PowerShell | ✅ Successful | 92041, 92027 |
+| T1112-1 | Modify Registry | ✅ Successful | 92052, 92041, 92027 |
+| T1059.001-11 | NTFS ADS | ✅ Successful | 92027 only |
+
 ---
 
 ## Key Findings
 
 1. Atomic Red Team successfully generated controlled security telemetry on the Windows endpoint.
-2. Sysmon captured process activity generated during the tests.
+
+2. Sysmon captured process and file activity generated during the tests.
+
 3. Wazuh successfully received and analyzed the resulting endpoint telemetry.
-4. Existing Wazuh detection rules identified multiple suspicious PowerShell and registry-related behaviors.
-5. The lab demonstrated that detection validation should distinguish between **test execution**, **telemetry generation**, and **specific detection-rule correlation**.
+
+4. Existing Wazuh rules identified multiple suspicious PowerShell and registry-related behaviors.
+
+5. The lab demonstrated that detection validation should distinguish between test execution, telemetry generation, and specific detection-rule correlation.
+
 6. The NTFS ADS test did not produce a direct Event ID 15 match in the current Wazuh configuration, identifying an area for possible future detection engineering.
 
 ---
@@ -173,14 +201,23 @@ The evidence demonstrates:
 
 ## Limitations
 
-These tests were performed in an isolated training environment.
+| Limitation | Description |
+|------------|-------------|
+| Environment | These tests were performed in an isolated training environment |
+| Coverage | Results demonstrate detection visibility within this specific lab configuration |
+| Scope | Should not be interpreted as complete detection coverage for the corresponding MITRE ATT&CK techniques |
+| Single endpoint | Testing was limited to one Windows endpoint |
 
-The results demonstrate detection visibility within this specific lab configuration and should not be interpreted as complete detection coverage for the corresponding MITRE ATT&CK techniques.
+---
 
-Future improvements could include:
+## Future Improvements
 
-- Additional Atomic Red Team tests
-- Custom detection rules for ADS activity
-- Additional Sysmon telemetry
-- More detailed MITRE ATT&CK correlation
-- Automated detection validation
+| Area | Potential Enhancement |
+|------|----------------------|
+| Atomic tests | Additional Atomic Red Team tests for other MITRE techniques |
+| Custom rules | Custom detection rules for ADS activity (Event ID 15) |
+| Telemetry | Additional Sysmon telemetry configuration |
+| Correlation | More detailed MITRE ATT&CK correlation |
+| Automation | Automated detection validation pipeline |
+| Network | Add network-level detection (Zeek/Suricata) |
+| Linux | Add Linux endpoint monitoring |
